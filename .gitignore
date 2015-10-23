@@ -1,0 +1,17 @@
+/target/
+target/*
+/.DS_Store
+/.classpath
+/.settings/
+/test-output/
+/.gitignore
+*.settings
+*.classpath
+*.project
+*.gitignore
+target
+target/*
+test-output
+test-output/*we
+log4j.xml
+log4j.properties
