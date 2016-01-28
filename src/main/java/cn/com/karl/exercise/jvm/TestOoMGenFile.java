@@ -11,17 +11,24 @@ import java.util.List;
  *
  */
 public class TestOoMGenFile {
-	public static final List<Object> list = new ArrayList<Object>();
+	public static final List<Long> list = new ArrayList<Long>();
 
 	/**
 	 * @param args
+	 * @throws InterruptedException 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		int i = 0;
-		while (true) {
-			list.add(new ArrayList<String>());
-			System.out.println(i++);
-		}
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				while (true) {
+					list.add(new Long(1));
+				}
+			}
+		}).start();
+		Thread.sleep(999999999999999l);
 	}
 
 }
