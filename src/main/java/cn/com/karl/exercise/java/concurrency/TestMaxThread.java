@@ -34,7 +34,6 @@ public class TestMaxThread implements Runnable {
 		overFlow();
 	}
 
-	@Override
 	public void run() {
 		try {
 			overFlow();
