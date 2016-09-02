@@ -1,4 +1,21 @@
 package cn.com.karl.exercise.java.nio;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.regex.Pattern;
+
 /*
  * @(#)TimeServer.java	1.3 01/12/13
  * Listen for connections and tell callers what time it is.  
@@ -69,20 +86,8 @@ package cn.com.karl.exercise.java.nio;
  * intended for use in the design, construction, operation or 
  * maintenance of any nuclear facility. 
  */
-
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
-import java.util.Date;
-import java.util.regex.Pattern;
-
 public class TimeServer {
+	private static Selector sel;
 
 	// We can't use the normal daytime port (unless we're running as root,
 	// which is unlikely), so we use this one instead
@@ -92,7 +97,7 @@ public class TimeServer {
 	private static int port = PORT;
 
 	// Charset and encoder for US-ASCII
-	private static Charset charset = Charset.forName("US-ASCII");
+	private static Charset charset = Charset.forName("UTF-8");
 	private static CharsetEncoder encoder = charset.newEncoder();
 
 	// Direct byte buffer for writing
@@ -101,25 +106,66 @@ public class TimeServer {
 	// Open and bind the server-socket channel
 	//
 	private static ServerSocketChannel setup() throws IOException {
+		sel = Selector.open();
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		InetSocketAddress isa = new InetSocketAddress(InetAddress.getLocalHost(), port);
 		ssc.socket().bind(isa);
+		ssc.configureBlocking(false);
+		ssc.register(sel, SelectionKey.OP_ACCEPT);
 		return ssc;
 	}
 
 	// Service the next request to come in on the given channel
 	//
 	private static void serve(ServerSocketChannel ssc) throws IOException {
-		SocketChannel sc = ssc.accept();
-		try {
-			String now = new Date().toString();
-			sc.write(encoder.encode(CharBuffer.wrap(now + "\r\n")));
-			System.out.println(sc.socket().getInetAddress() + " : " + now);
-			sc.close();
-		} finally {
-			// Make sure we close the channel (and hence the socket)
-			sc.close();
+		int readyChannels = sel.select();
+		if (readyChannels == 0)
+			return;
+		// SocketChannel sc = ssc.accept();
+		Iterator<SelectionKey> iter = sel.selectedKeys().iterator();
+		while (iter.hasNext()) {
+			SelectionKey key = iter.next();
+			if (key.isAcceptable()) {
+				System.out.println("acceptable");
+				regesterToWriteOp(key);
+			} else if (key.isConnectable()) {
+				regesterToWriteOp(key);
+			} else if (key.isReadable()) {
+				System.out.println("readable");
+			} else if (key.isWritable()) {
+				System.out.println("writable");
+				SocketChannel sc = null;
+				try {
+					sc = (SocketChannel) key.channel();
+					String now = new Date().toString();
+					sc.write(encoder.encode(CharBuffer.wrap(now + "\r\n")));
+					System.out.println(sc.socket().getInetAddress() + " : " + now);
+				} catch (Exception e) {
+					e.printStackTrace();
+				} finally {
+					if (sc != null) {
+						sc.close();
+					}
+				}
+			}
+			iter.remove();
 		}
+		// try {
+		//
+		// sc.close();
+		// } finally {
+		// // Make sure we close the channel (and hence the socket)
+		// sc.close();
+		// }
+	}
+
+	private static void regesterToWriteOp(SelectionKey key) throws IOException, ClosedChannelException {
+		ServerSocketChannel server = (ServerSocketChannel) key.channel();
+		// 获得和客户端连接的通道
+		SocketChannel channel = server.accept();
+		// 设置成非阻塞
+		channel.configureBlocking(false);
+		channel.register(sel, SelectionKey.OP_WRITE);
 	}
 
 	public static void main(String[] args) throws IOException {

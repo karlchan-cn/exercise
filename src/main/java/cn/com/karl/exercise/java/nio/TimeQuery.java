@@ -74,30 +74,76 @@ import java.io.*;
 import java.net.*;
 import java.nio.*;
 import java.nio.channels.*;
+import java.nio.channels.spi.SelectorProvider;
 import java.nio.charset.*;
 import java.util.regex.*;
 
 public class TimeQuery {
 
+	private Selector selector;
+
+	private SocketChannel sc;
+
 	// The standard daytime port
-	private static int DAYTIME_PORT = 13;
+	private static int DAYTIME_PORT = 8013;
 
 	// The port we'll actually use
-	private static int port = DAYTIME_PORT;
+	private int port = DAYTIME_PORT;
+
+	private String host;
 
 	// Charset and decoder for US-ASCII
-	private static Charset charset = Charset.forName("US-ASCII");
+	private static Charset charset = Charset.forName("UTF-8");
 	private static CharsetDecoder decoder = charset.newDecoder();
 
 	// Direct byte buffer for reading
 	private static ByteBuffer dbuf = ByteBuffer.allocateDirect(1024);
 
+	public TimeQuery(String host) {
+		try {
+			this.selector = Selector.open();
+			sc = SocketChannel.open();
+			sc.configureBlocking(false);
+			this.host = host;
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+
+	}
+
+	private void doConnect() {
+		try {
+			if (sc.connect(new InetSocketAddress(host, port))) {
+				sc.register(selector, SelectionKey.OP_READ);
+			} else
+				sc.register(selector, SelectionKey.OP_CONNECT);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private void doWrite(SocketChannel sc) {
+		try {
+			byte[] req = "QUERY TIME ORDER".getBytes();
+			ByteBuffer bb = ByteBuffer.allocate(req.length);
+			bb.put(req);
+			bb.flip();
+			sc.write(bb);
+			if(!bb.hasRemaining())
+				System.out.println("send mesage to server");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	// Ask the given host what time it is
 	//
 	private static void query(String host) throws IOException {
-		InetSocketAddress isa = new InetSocketAddress(InetAddress.getByName(host), port);
+		InetSocketAddress isa = new InetSocketAddress(InetAddress.getByName(host), DAYTIME_PORT);
 		SocketChannel sc = null;
-
 		try {
 
 			// Connect
@@ -123,21 +169,24 @@ public class TimeQuery {
 	}
 
 	public static void main(String[] args) {
+		
 		if (args.length < 1) {
 			System.err.println("Usage: java TimeQuery [port] host...");
 			return;
 		}
 		int firstArg = 0;
-
+		int paramPort = 0;
 		// If the first argument is a string of digits then we take that
 		// to be the port number
 		if (Pattern.matches("[0-9]+", args[0])) {
-			port = Integer.parseInt(args[0]);
+			paramPort = Integer.parseInt(args[0]);
 			firstArg = 1;
 		}
 
 		for (int i = firstArg; i < args.length; i++) {
 			String host = args[i];
+			TimeQuery tq = new TimeQuery(host);
+			tq.port =paramPort ;
 			try {
 				query(host);
 			} catch (IOException x) {
