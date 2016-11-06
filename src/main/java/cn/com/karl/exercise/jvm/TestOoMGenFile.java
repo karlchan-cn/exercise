@@ -36,10 +36,8 @@ public class TestOoMGenFile {
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-					
 				}
 			}).start();
-			
 		}
 		Thread.sleep(10000);
 		
