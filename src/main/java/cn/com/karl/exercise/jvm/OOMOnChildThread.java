@@ -21,7 +21,7 @@ public class OOMOnChildThread {
 	/**
 	 * vm option -Xmx32m -Xms32m Xmn16m -XX:+PrintGcDateStamps
 	 * -XX:+PrintGCDetails -XX:+PrintTenuringDistribution
-	 * -XX:ErrorFile=/Users/karl/dev/oppo_source/java_error%p.log
+	 * -XX:ErrorFile=/Users/karl/dev/test_source/java_error%p.log
 	 * -XX:+PrintConcurrentLocks -XX:+PrintClassHistogram
 	 * 
 	 * @param args
